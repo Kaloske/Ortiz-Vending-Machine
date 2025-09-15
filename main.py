@@ -52,14 +52,16 @@ def help_screen():
     To buy an item you may:
     1. Type its displayed index number or name.
     2. Use the buy command. (buy, name/index number, quantity) or (buy, name/index number)
-        Ex. buy apple 2
-        Ex. buy 2 1
-        Ex. buy 1
-        Ex. buy banana
+        Ex. buy, apple, 2
+        Ex. buy, 2, 1
+        Ex. buy, 1
+        Ex. buy, banana
 
     Typing 'inventory' will display the inventory.
 
     Typing 'exit' will exit the program.
+    
+    When prompted with a confirmation screen, you may answer with y/yes or n/no
     """)
 
 def confirm_input(prompt):  # takes a prompt and returns true if the user answers y and vice versa, supports yes/no
@@ -86,10 +88,10 @@ def ask_for_quantity(item): #given inventory object will askk for the quantity
         except ValueError:
             output_error(f"Quantity must be an integer.")
 
-def input_handler(prompt): #takes userinput seperates it into a list
+def input_handler(prompt):
     return input(prompt).lower().split(", ")
 
-def buy_from_index(item_index, quantity=0): #buys an item given its index
+def buy_from_index(item_index, quantity=0):
     try:
         quantity = int(quantity)
         item_index = int(item_index) - 1
@@ -107,7 +109,7 @@ def buy_from_index(item_index, quantity=0): #buys an item given its index
     except ValueError:
         output_error(f"Quantity must be a valid integer.")
 
-def buy_from_name(item, quantity=0): #buys an item given its name
+def buy_from_name(item, quantity=0):
     try:
         quantity = int(quantity)
         if item in list(inventory_dict.keys()):
@@ -123,7 +125,7 @@ def buy_from_name(item, quantity=0): #buys an item given its name
     except ValueError:
         output_error(f"Quantity must be a valid integer.")
 
-def process_input(user_input): #main logic for checking user input
+def process_input(user_input):
     match user_input:
         case ["inventory"]:
             output_list()
@@ -145,9 +147,8 @@ def process_input(user_input): #main logic for checking user input
                 buy_from_name(item)
         case _:
             output_error("Invalid input.")
-            
-def main(): #core loop
-    print("Nishie's Vending Machine! v.1.2 \nType 'help' for instructions.")
+def main():
+    print("Nishie's Vending Machine! v.1.3 \nType 'help' for instructions.")
     while running:
         output_list()
         process_input(input_handler("> "))
