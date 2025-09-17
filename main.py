@@ -1,6 +1,15 @@
-running = True
-balance = 1000
-
+class System: #using a class for system is much cleaner
+    def __init__(self, balance, running):
+        self.balance = balance
+        self.running = running
+    def deposit(self, amount):
+        if amount.isdigit():
+            amount = int(amount)
+            self.balance += amount
+        else:
+            output_error("Please deposit a positive integer")
+    def shutdown(self):
+        self.running = False
 
 class InventoryItem:
     def __init__(self, name, stock, price):
@@ -9,26 +18,26 @@ class InventoryItem:
         self.stock = stock
 
     def sell(self, quantity):
-        global balance
         if quantity <= self.stock:
-            if quantity * self.price <= balance:
+            if quantity * self.price <= system.balance:
                 self.stock -= quantity
-                balance -= quantity * self.price
+                system.balance -= quantity * self.price
                 return None
             else:
-                return output_error("Balance Error")
+                return output_error("Balance insufficient")
         else:
             return output_error('Stock insufficient')
 
     def __str__(self):
         return f'Inventory Item: {self.name} {self.stock} {self.price}'
 
-
+system = System(500, True)
 chips = InventoryItem('chips', 10, 20)
 chocolate = InventoryItem('chocolate', 10, 25)
 coca_cola = InventoryItem('coca cola', 10, 30)
+apple = InventoryItem('apple', 10, 30)
 
-inventory = [chips, chocolate, coca_cola]
+inventory = [chips, chocolate, coca_cola, apple]
 inventory_dict = {item.name: item for item in inventory}
 
 def output_error(message):  # I separated this so that I have the other functions focusing on just returning
@@ -37,13 +46,12 @@ def output_error(message):  # I separated this so that I have the other function
 def check_index_range(index_number):  # used to check if a number is in the dictionary's index range
     if 0 <= index_number < len(inventory):
         return True
-    elif index_number > len(inventory):
-        output_error(f"Item Index:{index_number + 1} not found in the inventory.")
+    elif index_number > len(inventory) or index_number < 0:
         return False
     return None
 
 def output_list():  # prints inventory and stuff
-    print(f"Balance: {balance}$")
+    print(f"Balance: {system.balance}$")
     for i, item in enumerate(inventory, start=1):
         print(f"[{i}] {item.name.title()}: {item.price}$ x{item.stock}")
 
@@ -61,13 +69,18 @@ def help_screen():
 
     Typing 'exit' will exit the program.
     
+    Typing add, (quantity) will deposit money to your balance
+    
     When prompted with a confirmation screen, you may answer with y/yes or n/no
     """)
+
+def input_handler(prompt):
+    return input(prompt).lower().split(", ")
 
 def confirm_input(prompt):  # takes a prompt and returns true if the user answers y and vice versa, supports yes/no
     while True:
         print(prompt)
-        userinput = input("> ").lower().split()
+        userinput = input_handler("> ")
         match userinput:
             case ["y"] | ["yes"]:
                 return True
@@ -76,54 +89,52 @@ def confirm_input(prompt):  # takes a prompt and returns true if the user answer
             case _:
                 print("Invalid input")
 
-def ask_for_quantity(item): #given inventory object will askk for the quantity
+def ask_for_quantity(item): #given inventory object will ask for the quantity
     while True:  # loops until a number is inputted
         quantity = (input_handler(f"Input desired quantity for '{item.name}'\n> ")[0])
-        try:
+        if quantity.isdigit():
             quantity = int(quantity)
             if quantity > 0:
                 return quantity
             elif quantity <= 0:
                 output_error("Quantity cannot be negative or zero.")
-        except ValueError:
-            output_error(f"Quantity must be an integer.")
-
-def input_handler(prompt):
-    return input(prompt).lower().split(", ")
+        else:
+            output_error(f"Quantity must be a valid positive integer.")
 
 def buy_from_index(item_index, quantity=0):
     try:
         quantity = int(quantity)
         item_index = int(item_index) - 1
-        if quantity >= 0:
-            if check_index_range(item_index): #check if it's in the range
-                item = list(inventory_dict.values())[item_index]
-                if quantity == 0:
-                    quantity = ask_for_quantity(item)
-                if confirm_input(f"Would you like to buy {quantity} '{item.name} for {item.price * quantity}$'? [y/n]"):
-                    item.sell(quantity)
-            elif item_index < 0:
-                output_error("Item index cannot be negative or zero.")
-        else:
-            output_error("Quantity cannot be zero.")
+        if not check_index_range(item_index): #check if it's in the range
+            output_error("Item index not found")
+            return
+        if quantity < 0: #check if negative
+            output_error("Quantity cannot be negative.")
+            return
+        item = list(inventory_dict.values())[item_index]
+        if quantity == 0: #final check for quantity, if 0 ask for a quantity
+            quantity = ask_for_quantity(item)
+        if confirm_input(f"Would you like to buy {quantity} '{item.name} for {item.price * quantity}$'? [y/n]"):#Confirm
+            item.sell(quantity)
     except ValueError:
-        output_error(f"Quantity must be a valid integer.")
+        output_error("Quantity must be a valid positive integer!")
 
 def buy_from_name(item, quantity=0):
     try:
         quantity = int(quantity)
-        if item in list(inventory_dict.keys()):
-            item = inventory_dict[item]
-            if quantity == 0: quantity = ask_for_quantity(item) #final check for quantity
-            elif quantity < 0:
-                output_error("Quantity cannot be negative")
-                return
-            if confirm_input(f"Would you like to buy {quantity} '{item.name} for {item.price * quantity}$'? [y/n]"):
-                item.sell(quantity)
-        else:
+        if item not in list(inventory_dict.keys()):
             output_error(f"'{item}' not found in the inventory.")
+            return
+        if quantity < 0:
+            output_error("Quantity cannot be negative")
+            return
+        item = inventory_dict[item]
+        if quantity == 0:
+            quantity = ask_for_quantity(item) #final check for quantity
+        if confirm_input(f"Would you like to buy {quantity} '{item.name} for {item.price * quantity}$'? [y/n]"):
+            item.sell(quantity)
     except ValueError:
-        output_error(f"Quantity must be a valid integer.")
+        output_error(f"Quantity must be a valid positive integer.")
 
 def process_input(user_input):
     match user_input:
@@ -132,9 +143,8 @@ def process_input(user_input):
         case ["help"]:
             help_screen()
         case ["exit"]:
-            global running
             if confirm_input(f"Are you sure you want to exit the program? [y/n]"):
-                running = False
+                system.shutdown()
         case ["buy", item, quantity]:
             if item[1:].isdecimal() or item.isdecimal():
                 buy_from_index(item, quantity)
@@ -145,12 +155,14 @@ def process_input(user_input):
                 buy_from_index(item)
             else:
                 buy_from_name(item)
+        case ["add", quantity]:
+            system.deposit(quantity)
         case _:
             output_error("Invalid input.")
+
 def main():
-    print("Nishie's Vending Machine! v.1.3 \nType 'help' for instructions.")
-    while running:
+    print("Nishie's Vending Machine! v.1.4 \nType 'help' for instructions.")
+    while system.running:
         output_list()
         process_input(input_handler("> "))
-
 main()
