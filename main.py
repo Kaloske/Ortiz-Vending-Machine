@@ -17,16 +17,14 @@ class InventoryItem:
         self.price = price
         self.stock = stock
 
-    def sell(self, quantity):
-        if quantity <= self.stock:
-            if quantity * self.price <= system.balance:
-                self.stock -= quantity
-                system.balance -= quantity * self.price
-                return None
-            else:
-                return output_error("Balance insufficient")
-        else:
+    def sell(self, quantity): #this is all obvious, no need for comments
+        if quantity > self.stock:
             return output_error('Stock insufficient')
+        if self.price > system.balance:
+            return output_error("Balance insufficient")
+        self.stock -= quantity
+        system.balance -= quantity * self.price
+        return None
 
     def __str__(self):
         return f'Inventory Item: {self.name} {self.stock} {self.price}'
@@ -41,7 +39,14 @@ inventory = [chips, chocolate, coca_cola, apple]
 inventory_dict = {item.name: item for item in inventory}
 
 def output_error(message):  # I separated this so that I have the other functions focusing on just returning
-    print(f"Error! {message}")
+    print(f"Error: {message}")
+
+def valid_digit(number): #check if a string is actually a number
+    try:
+        int(number)
+        return True
+    except ValueError:
+        return False
 
 def check_index_range(index_number):  # used to check if a number is in the dictionary's index range
     if 0 <= index_number < len(inventory):
@@ -74,7 +79,7 @@ def help_screen():
     When prompted with a confirmation screen, you may answer with y/yes or n/no
     """)
 
-def input_handler(prompt):
+def input_handler(prompt): #gets input and returns it as a normalized list of words
     return input(prompt).lower().split(", ")
 
 def confirm_input(prompt):  # takes a prompt and returns true if the user answers y and vice versa, supports yes/no
@@ -102,39 +107,43 @@ def ask_for_quantity(item): #given inventory object will ask for the quantity
             output_error(f"Quantity must be a valid positive integer.")
 
 def buy_from_index(item_index, quantity=0):
-    try:
-        quantity = int(quantity)
-        item_index = int(item_index) - 1
-        if not check_index_range(item_index): #check if it's in the range
-            output_error("Item index not found")
-            return
-        if quantity < 0: #check if negative
-            output_error("Quantity cannot be negative.")
-            return
-        item = list(inventory_dict.values())[item_index]
-        if quantity == 0: #final check for quantity, if 0 ask for a quantity
-            quantity = ask_for_quantity(item)
-        if confirm_input(f"Would you like to buy {quantity} '{item.name} for {item.price * quantity}$'? [y/n]"):#Confirm
-            item.sell(quantity)
-    except ValueError:
-        output_error("Quantity must be a valid positive integer!")
+    item_index = int(item_index) - 1
+    if not check_index_range(item_index): #check if it's in the range
+        output_error("Item index not found")
+        return
+    if not valid_digit(quantity): #check if we can actually make it an integer
+        output_error(f"Quantity must be a valid positive integer.")
+        return
+    #basic checks passed! let's reassign them to the proper values
+    quantity = int(quantity)
+    item = list(inventory_dict.values())[item_index]
+    if quantity < 0: #check if negative
+        output_error("Quantity cannot be negative.")
+        return
+    if quantity == 0: #final check for quantity, if 0 ask for a quantity
+        quantity = ask_for_quantity(item)
+    if confirm_input(f"Would you like to buy {quantity} '{item.name} for {item.price * quantity}$'? [y/n]"):
+        #All checks passed!
+        item.sell(quantity)
 
 def buy_from_name(item, quantity=0):
-    try:
-        quantity = int(quantity)
-        if item not in list(inventory_dict.keys()):
-            output_error(f"'{item}' not found in the inventory.")
-            return
-        if quantity < 0:
-            output_error("Quantity cannot be negative")
-            return
-        item = inventory_dict[item]
-        if quantity == 0:
-            quantity = ask_for_quantity(item) #final check for quantity
-        if confirm_input(f"Would you like to buy {quantity} '{item.name} for {item.price * quantity}$'? [y/n]"):
-            item.sell(quantity)
-    except ValueError:
+    if item not in list(inventory_dict.keys()): #check if in the inventory
+        output_error(f"'{item}' not found in the inventory.")
+        return
+    if not valid_digit(quantity): #check if we can actually make it an integer
         output_error(f"Quantity must be a valid positive integer.")
+        return
+    # basic checks passed! let's reassign them to the proper values
+    quantity = int(quantity)
+    item = inventory_dict[item]
+    if quantity < 0: #check if it's negative
+        output_error("Quantity cannot be negative")
+        return
+    if quantity == 0:
+        quantity = ask_for_quantity(item) #final check for quantity
+    if confirm_input(f"Would you like to buy {quantity} '{item.name} for {item.price * quantity}$'? [y/n]"):
+        # All checks passed!
+        item.sell(quantity)
 
 def process_input(user_input):
     match user_input:
@@ -146,12 +155,12 @@ def process_input(user_input):
             if confirm_input(f"Are you sure you want to exit the program? [y/n]"):
                 system.shutdown()
         case ["buy", item, quantity]:
-            if item[1:].isdecimal() or item.isdecimal():
+            if valid_digit(item):
                 buy_from_index(item, quantity)
             else:
                 buy_from_name(item, quantity)
         case ["buy", item] | [item]:
-            if item[1:].isdecimal() or item.isdecimal():
+            if valid_digit(item):
                 buy_from_index(item)
             else:
                 buy_from_name(item)
@@ -161,7 +170,7 @@ def process_input(user_input):
             output_error("Invalid input.")
 
 def main():
-    print("Nishie's Vending Machine! v.1.4 \nType 'help' for instructions.")
+    print("Nishie's Vending Machine! v.1.5 \nType 'help' for instructions.")
     while system.running:
         output_list()
         process_input(input_handler("> "))
